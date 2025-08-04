@@ -1,10 +1,8 @@
 package com.ecommerce.shoppingcart.dto;
 
-import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 public class AddToCartRequest {
-    @NotEmpty
     private List<Long> itemIds;
 
     // Constructors

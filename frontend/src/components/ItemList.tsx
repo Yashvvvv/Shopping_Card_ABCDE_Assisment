@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Item, itemAPI, cartAPI, orderAPI, AddToCartRequest, CreateOrderRequest, Order } from '../services/api';
+import { itemAPI, cartAPI, orderAPI } from '../services/api';
+import './ItemList.css';
+
+interface Item {
+  id: number;
+  name: string;
+  status: string;
+  createdAt: string;
+}
 
 interface ItemListProps {
   onLogout: () => void;
@@ -8,237 +16,184 @@ interface ItemListProps {
 
 const ItemList: React.FC<ItemListProps> = ({ onLogout, username }) => {
   const [items, setItems] = useState<Item[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [cart, setCart] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [cartItemCount, setCartItemCount] = useState(0);
 
   useEffect(() => {
     loadItems();
+    loadCart();
   }, []);
 
   const loadItems = async () => {
     try {
-      const itemsData = await itemAPI.getAllItems();
-      setItems(itemsData);
+      const response = await itemAPI.getAllItems();
+      setItems(response);
     } catch (error) {
-      window.alert('Error loading items');
+      console.error('Failed to load items', error);
+    }
+  };
+
+  const loadCart = async () => {
+    try {
+      const response = await cartAPI.getMyCart();
+      setCart(response);
+      setCartItemCount(response?.cartItems?.length || 0);
+    } catch (error) {
+      setCart(null);
+      setCartItemCount(0);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const response = await orderAPI.getAllOrders();
+      setOrders(response);
+    } catch (error) {
+      console.error('Failed to load orders', error);
+    }
+  };
+
+  const addItemToCart = async (itemId: number) => {
+    try {
+      setIsLoading(true);
+      await cartAPI.addItemsToCart({ itemIds: [itemId] });
+      await loadCart(); // Reload cart to update count
+      alert('Item added to cart successfully!');
+    } catch (error) {
+      alert('Failed to add item to cart');
+      console.error('Error adding item to cart:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const addToCart = async (itemId: number) => {
+  const showCartItems = async () => {
     try {
-      const request: AddToCartRequest = { itemIds: [itemId] };
-      await cartAPI.addItemsToCart(request);
-      window.alert('Item added to cart successfully!');
-    } catch (error) {
-      window.alert('Error adding item to cart');
-    }
-  };
-
-  const showCart = async () => {
-    try {
-      const cart = await cartAPI.getMyCart();
-      const cartItems = await cartAPI.getCartItems(cart.id);
-      
-      if (cartItems.length === 0) {
-        window.alert('Your cart is empty');
+      if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
+        alert('Your cart is empty!');
         return;
       }
-
-      const cartInfo = cartItems.map(item => `Cart ID: ${item.cartId}, Item ID: ${item.itemId}`).join('\n');
-      window.alert(`Cart Items:\n${cartInfo}`);
+      
+      const cartDetails = cart.cartItems.map((item: any) => 
+        `Cart ID: ${item.cartId}, Item ID: ${item.itemId}, Item: ${item.itemName}`
+      ).join('\n');
+      
+      alert(`Cart Items:\n${cartDetails}`);
     } catch (error) {
-      window.alert('No active cart found');
+      alert('Failed to load cart items');
     }
   };
 
   const showOrderHistory = async () => {
     try {
-      const orders: Order[] = await orderAPI.getMyOrders();
-      
+      await loadOrders();
       if (orders.length === 0) {
-        window.alert('No orders found');
+        alert('No orders found!');
         return;
       }
-
-      const orderInfo = orders.map(order => `Order ID: ${order.id}`).join('\n');
-      window.alert(`Your Orders:\n${orderInfo}`);
+      
+      const orderIds = orders.map(order => `Order ID: ${order.id}`).join('\n');
+      alert(`Order History:\n${orderIds}`);
     } catch (error) {
-      window.alert('Error loading order history');
+      alert('Failed to load order history');
     }
   };
 
   const checkout = async () => {
     try {
-      const cart = await cartAPI.getMyCart();
-      const cartItems = await cartAPI.getCartItems(cart.id);
-      
-      if (cartItems.length === 0) {
-        window.alert('Your cart is empty');
+      if (!cart || !cart.cartItems || cart.cartItems.length === 0) {
+        alert('Your cart is empty! Add some items before checkout.');
         return;
       }
 
-      const request: CreateOrderRequest = { cartId: cart.id };
-      await orderAPI.createOrder(request);
-      window.alert('Order successful!');
+      setIsLoading(true);
+      await orderAPI.createOrder({ cartId: cart.id });
+      
+      // Reload data after successful order
+      await loadCart();
+      await loadOrders();
+      
+      alert('Order successful!');
     } catch (error) {
-      window.alert('Error creating order. Please make sure you have items in your cart.');
+      alert('Failed to create order');
+      console.error('Error creating order:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return <div style={styles.loading}>Loading items...</div>;
-  }
-
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Welcome, {username}!</h2>
-        <div style={styles.headerButtons}>
-          <button onClick={checkout} style={{...styles.button, ...styles.checkoutButton}}>
-            Checkout
-          </button>
-          <button onClick={showCart} style={{...styles.button, ...styles.cartButton}}>
-            Cart
-          </button>
-          <button onClick={showOrderHistory} style={{...styles.button, ...styles.orderButton}}>
-            Order History
-          </button>
-          <button onClick={onLogout} style={{...styles.button, ...styles.logoutButton}}>
+    <div className="item-list-container">
+      {/* Header */}
+      <header className="header">
+        <div className="header-left">
+          <h1>🛍️ E-Commerce Store</h1>
+          <p>Welcome, {username}!</p>
+        </div>
+        <div className="header-right">
+          <button className="logout-btn" onClick={onLogout}>
             Logout
           </button>
         </div>
+      </header>
+
+      {/* Action Buttons - As per requirements */}
+      <div className="action-buttons">
+        <button 
+          className="checkout-btn" 
+          onClick={checkout} 
+          disabled={isLoading || cartItemCount === 0}
+        >
+          {isLoading ? 'Processing...' : `Checkout ${cartItemCount > 0 ? `(${cartItemCount} items)` : ''}`}
+        </button>
+        
+        <button 
+          className="cart-btn" 
+          onClick={showCartItems}
+        >
+          Cart {cartItemCount > 0 && `(${cartItemCount})`}
+        </button>
+        
+        <button 
+          className="order-history-btn" 
+          onClick={showOrderHistory}
+        >
+          Order History
+        </button>
       </div>
 
-      <div style={styles.itemsContainer}>
-        <h3 style={styles.sectionTitle}>Available Items</h3>
-        {items.length === 0 ? (
-          <p style={styles.noItems}>No items available</p>
-        ) : (
-          <div style={styles.itemsGrid}>
-            {items.map((item) => (
-              <div key={item.id} style={styles.itemCard}>
-                <h4 style={styles.itemName}>{item.name}</h4>
-                <p style={styles.itemStatus}>Status: {item.status}</p>
-                <button 
-                  onClick={() => addToCart(item.id)}
-                  style={styles.addToCartButton}
-                  disabled={item.status !== 'ACTIVE'}
-                >
-                  Add to Cart
-                </button>
+      {/* Items List - Main Screen */}
+      <main className="items-section">
+        <h2>Available Items</h2>
+        <div className="items-grid">
+          {items.map((item) => (
+            <div key={item.id} className="item-card">
+              <div className="item-info">
+                <h3>{item.name}</h3>
+                <p className="item-status">Status: {item.status}</p>
+                <p className="item-id">ID: {item.id}</p>
               </div>
-            ))}
+              <button
+                className="add-to-cart-btn"
+                onClick={() => addItemToCart(item.id)}
+                disabled={isLoading || item.status !== 'ACTIVE'}
+              >
+                {isLoading ? 'Adding...' : 'Add to Cart'}
+              </button>
+            </div>
+          ))}
+        </div>
+        
+        {items.length === 0 && (
+          <div className="no-items">
+            <p>No items available at the moment.</p>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    padding: '1rem',
-    minHeight: '100vh',
-    backgroundColor: '#f8f9fa',
-  },
-  loading: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    fontSize: '1.2rem',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    padding: '1rem',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  title: {
-    margin: 0,
-    color: '#333',
-  },
-  headerButtons: {
-    display: 'flex',
-    gap: '0.5rem',
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    fontWeight: 'bold',
-  },
-  checkoutButton: {
-    backgroundColor: '#28a745',
-    color: 'white',
-  },
-  cartButton: {
-    backgroundColor: '#17a2b8',
-    color: 'white',
-  },
-  orderButton: {
-    backgroundColor: '#6f42c1',
-    color: 'white',
-  },
-  logoutButton: {
-    backgroundColor: '#dc3545',
-    color: 'white',
-  },
-  itemsContainer: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  sectionTitle: {
-    marginTop: 0,
-    marginBottom: '1.5rem',
-    color: '#333',
-  },
-  noItems: {
-    textAlign: 'center' as const,
-    color: '#666',
-    fontSize: '1.1rem',
-  },
-  itemsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1rem',
-  },
-  itemCard: {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    padding: '1rem',
-    backgroundColor: '#f8f9fa',
-    transition: 'transform 0.2s',
-  },
-  itemName: {
-    margin: '0 0 0.5rem 0',
-    color: '#333',
-  },
-  itemStatus: {
-    margin: '0 0 1rem 0',
-    color: '#666',
-    fontSize: '0.9rem',
-  },
-  addToCartButton: {
-    width: '100%',
-    padding: '0.75rem',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-  },
 };
 
 export default ItemList;

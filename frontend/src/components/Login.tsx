@@ -1,161 +1,147 @@
 import React, { useState } from 'react';
-import { userAPI, LoginRequest } from '../services/api';
+import { userAPI } from '../services/api';
+import './Login.css';
 
 interface LoginProps {
   onLoginSuccess: (token: string, userId: number, username: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      window.alert('Please enter both username and password');
-      return;
-    }
-
     setIsLoading(true);
-    try {
-      const loginRequest: LoginRequest = { username, password };
-      const response = await userAPI.login(loginRequest);
-      localStorage.setItem('token', response.token);
-      onLoginSuccess(response.token, response.userId, response.username);
-    } catch (error) {
-      window.alert('Invalid username/password');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setError('');
 
-  const handleSignup = async () => {
-    if (!username || !password) {
-      window.alert('Please enter both username and password');
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      await userAPI.createUser({ username, password });
-      window.alert('User created successfully! Please login now.');
-    } catch (error) {
-      window.alert('Username already exists or error creating user');
+      if (isLogin) {
+        const response = await userAPI.login({ username, password });
+        onLoginSuccess(response.token, response.userId, response.username);
+      } else {
+        await userAPI.createUser({ username, password });
+        setIsLogin(true);
+        setError('Account created successfully! Please login.');
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 
+                          (isLogin ? 'Invalid username or password' : 'Registration failed');
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.formContainer}>
-        <h2 style={styles.title}>Shopping Cart Login</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Username:</label>
+    <div className="login-container">
+      <div className="login-background">
+        <div className="floating-shapes">
+          <div className="shape shape-1"></div>
+          <div className="shape shape-2"></div>
+          <div className="shape shape-3"></div>
+          <div className="shape shape-4"></div>
+        </div>
+      </div>
+      
+      <div className="login-card">
+        <div className="login-header">
+          <h1 className="login-title">
+            🛒 Shopping Cart
+          </h1>
+          <p className="login-subtitle">
+            {isLogin ? 'Welcome back!' : 'Create your account'}
+          </p>
+        </div>
+
+        <div className="login-tabs">
+          <button
+            className={`tab ${isLogin ? 'active' : ''}`}
+            onClick={() => {
+              setIsLogin(true);
+              setError('');
+            }}
+          >
+            Login
+          </button>
+          <button
+            className={`tab ${!isLogin ? 'active' : ''}`}
+            onClick={() => {
+              setIsLogin(false);
+              setError('');
+            }}
+          >
+            Register
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              style={styles.input}
-              disabled={isLoading}
               required
+              disabled={isLoading}
+              placeholder="Enter your username"
             />
           </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Password:</label>
+
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
-              disabled={isLoading}
               required
+              disabled={isLoading}
+              placeholder="Enter your password"
             />
           </div>
-          <div style={styles.buttonGroup}>
-            <button 
-              type="submit" 
-              style={styles.button}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Logging in...' : 'Login'}
-            </button>
-            <button 
-              type="button" 
-              onClick={handleSignup}
-              style={{...styles.button, ...styles.signupButton}}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Creating...' : 'Sign Up'}
-            </button>
-          </div>
+
+          {error && (
+            <div className={`error-message ${error.includes('successfully') ? 'success' : ''}`}>
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className={`submit-btn ${isLoading ? 'loading' : ''}`}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="loading-spinner"></div>
+            ) : (
+              isLogin ? 'Login' : 'Register'
+            )}
+          </button>
         </form>
+
+        <div className="login-footer">
+          <p>
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
+            >
+              {isLogin ? 'Register here' : 'Login here'}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-  },
-  formContainer: {
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-    width: '100%',
-    maxWidth: '400px',
-  },
-  title: {
-    textAlign: 'center' as const,
-    marginBottom: '1.5rem',
-    color: '#333',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '1rem',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  label: {
-    marginBottom: '0.5rem',
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  input: {
-    padding: '0.75rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '1rem',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '1rem',
-  },
-  button: {
-    flex: 1,
-    padding: '0.75rem',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '1rem',
-    cursor: 'pointer',
-  },
-  signupButton: {
-    backgroundColor: '#28a745',
-  },
 };
 
 export default Login;

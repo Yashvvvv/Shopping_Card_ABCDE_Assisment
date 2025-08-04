@@ -1,7 +1,6 @@
 package com.ecommerce.shoppingcart.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -18,7 +17,6 @@ public class Cart {
     @Column(name = "user_id")
     private Long userId;
 
-    @NotBlank
     private String name;
 
     private String status = "ACTIVE";
@@ -32,7 +30,7 @@ public class Cart {
     @JsonIgnore
     private User user;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<CartItem> cartItems;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

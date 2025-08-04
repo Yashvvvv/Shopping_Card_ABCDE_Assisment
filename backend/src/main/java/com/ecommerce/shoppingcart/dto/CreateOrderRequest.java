@@ -1,9 +1,6 @@
 package com.ecommerce.shoppingcart.dto;
 
-import jakarta.validation.constraints.NotNull;
-
 public class CreateOrderRequest {
-    @NotNull
     private Long cartId;
 
     // Constructors

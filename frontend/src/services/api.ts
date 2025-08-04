@@ -77,6 +77,14 @@ export interface AddToCartRequest {
   itemIds: number[];
 }
 
+export interface AddToCartResponse {
+  id: number;
+  userId: number;
+  name: string;
+  status: string;
+  message: string;
+}
+
 export interface CreateOrderRequest {
   cartId: number;
 }
@@ -102,7 +110,7 @@ export const itemAPI = {
 };
 
 export const cartAPI = {
-  addItemsToCart: (request: AddToCartRequest): Promise<Cart> =>
+  addItemsToCart: (request: AddToCartRequest): Promise<AddToCartResponse> =>
     api.post('/carts', request).then(res => res.data),
   
   getAllCarts: (): Promise<Cart[]> =>
